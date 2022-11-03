@@ -1,0 +1,14 @@
+###### Requirements without Version Specifiers ######
+scikit-image
+matplotlib 
+shapely 
+rtree 
+pyembree 
+scipy 
+nose
+cvxpy 
+trimesh[all] 
+###### Requirements with Version Specifiers ######
+
+
+cmake -DPYTHON_EXECUTABLE=~/anaconda3/envs/rg_sddm39/bin/python ..
