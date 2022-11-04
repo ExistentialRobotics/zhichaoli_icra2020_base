@@ -54,9 +54,10 @@ if __name__ == "__main__":
 
       # find furthest intersection between ball and path
       # TODO_STEP3 test FuncA 
-      # status1, x_star1, B_idx1 = FuncA(circle_vec[0:pt_dim], circle_vec[-1], path=waypoints)
+      # status: 0, succ, -1 failed, lpg
+      # status, lpg, nav_adv_idx = FuncA(circle_vec[0:pt_dim], circle_vec[-1], path=waypoints)
 
-      print("status1 = %02d, lpg = %s, nav_adv_idx = %d" % (status1, x_star1, B_idx1))
+      print("status = %02d, lpg = %s, nav_adv_idx = %d" % (status, lpg, nav_adv_idx))
       if show_plots:
         fig, ax = plt.subplots()
         patch_circle = mp.Circle(circle_vec[:pt_dim], circle_vec[-1], color="tab:grey", alpha=0.8)
@@ -68,8 +69,8 @@ if __name__ == "__main__":
         ax.set_xlim([-PLOT_LIMIT, PLOT_LIMIT])
         ax.set_ylim([-PLOT_LIMIT, PLOT_LIMIT])
         ax.set_aspect("equal")
-        if status1 >= 0:
-          plt.scatter(x_star1[0], x_star1[1], c="red", marker="o")
+        if status >= 0:
+          plt.scatter(lpg[0], lpg[1], c="red", marker="o")
         plt.pause(0.01)
         plt.show()
     pressQ_to_exist()
