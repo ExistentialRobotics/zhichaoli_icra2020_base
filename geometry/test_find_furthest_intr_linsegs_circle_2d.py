@@ -11,6 +11,7 @@ import numpy as np
 import numpy.linalg as npla
 from matplotlib import pyplot as plt
 
+from find_furthest_intr import ball_and_path
 from plt_common import add_waypoint_path
 
 
@@ -56,6 +57,7 @@ if __name__ == "__main__":
       # TODO_STEP3 test FuncA 
       # status: 0, succ, -1 failed, lpg
       # status, lpg, nav_adv_idx = FuncA(circle_vec[0:pt_dim], circle_vec[-1], path=waypoints)
+      status, lpg, nav_adv_idx = ball_and_path(circle_vec[0:pt_dim], circle_vec[-1], path=waypoints)
 
       print("status = %02d, lpg = %s, nav_adv_idx = %d" % (status, lpg, nav_adv_idx))
       if show_plots:
@@ -71,6 +73,18 @@ if __name__ == "__main__":
         ax.set_aspect("equal")
         if status >= 0:
           plt.scatter(lpg[0], lpg[1], c="red", marker="o")
+          plt.scatter(waypoints[0, 0], waypoints[0, 1], c="red", marker="*")
+          plt.scatter(waypoints[-1, 0], waypoints[-1, 1], c="green", marker="*")
         plt.pause(0.01)
         plt.show()
     pressQ_to_exist()
+
+
+# Expected result
+# status = -1, lpg = [], nav_adv_idx = -5
+# status = 00, lpg = [-0.00  2.00], nav_adv_idx = -3
+# status = 00, lpg = [ 1.56  2.56], nav_adv_idx = -2
+# status = 00, lpg = [ 2.28  3.28], nav_adv_idx = -2
+# status = 00, lpg = [ 4.68  1.76], nav_adv_idx = -1
+# status = 00, lpg = [ 6.00  0.00], nav_adv_idx = -1
+# status = 00, lpg = [ 6.00  0.00], nav_adv_idx = -1
