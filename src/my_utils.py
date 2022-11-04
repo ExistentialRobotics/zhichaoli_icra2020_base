@@ -31,7 +31,7 @@ def pressQ_to_exist():
     """ press key `Q` or `q` to exit
     """
     while True:
-        key_got = input('Press [Q] to quit, Press [R] to replay \n')
+        key_got = input('Press [Q] to quit\n')
         if key_got == 'q' or key_got == 'Q':
             print('Received %c, Program terminated'  %key_got)
             break

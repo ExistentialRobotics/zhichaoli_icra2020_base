@@ -7,9 +7,9 @@ Robot Governor System Simulation
     SDDM/Eculidean Metric
 
 Author: zhichao li at UCSD ERL
-Date: 06/26/2020
+Date: 11/03/2022
 BSD 3-Clause License
-https://github.com/zhl355/ICRA2020_RG_SDDM
+
 """
 # python built in package
 import os
@@ -19,9 +19,8 @@ import matplotlib as mpl
 from numpy.linalg import norm
 # personal libraries
 from gov_map import MyMap
-from gov_map import OBSTACLES_2, NAV_PATH_2, BOUNDARY_PTS_2   # corridor env
 from gov_map import NAV_PATH_14, OBSTACLES_1, BOUNDARY_PTS_1  # circular env
-from rgs_sparse_known import RbtGovSys
+from rgs_sparse_known_simple import RbtGovSys
 from gov_log_viewer import GovLogViewer
 from lti_solver import RGS_LTISolver
 from traj_est import find_eta_max_analytic
@@ -41,30 +40,16 @@ print('===========================Init Start==============================')
 GOAL_REACH_TH = 1
 # Metric Setup
 c1, c2 = 1.0, 1.0 # Euclidean norm
-#c1, c2 = 1.0, 4.0  # Quadratic norm eigenvalues
-
-if np.abs(c2-c1) > 1e-3:
-    energy_metric = 'ellipse'
-else:
-    energy_metric = 'ball'
-
-corridor_sim = False
-#corridor_sim = True
+energy_metric = 'ball'
 
 print('Energy metric is %s' % energy_metric)
-if corridor_sim is False:
-    print('Create general map for simualtion...')
-    rgs_map = MyMap(BOUNDARY_PTS_1, OBSTACLES_1, NAV_PATH_14)
-    xg0 = rgs_map.start_pt + \
-        (NAV_PATH_14[1] - NAV_PATH_14[0]) / \
-        norm((NAV_PATH_14[1] - NAV_PATH_14[0]))
+print('Create general map for simualtion...')
+rgs_map = MyMap(BOUNDARY_PTS_1, OBSTACLES_1, NAV_PATH_14)
+init_dir = (NAV_PATH_14[1] - NAV_PATH_14[0]) / norm((NAV_PATH_14[1] - NAV_PATH_14[0]))
+xg0 = rgs_map.start_pt + init_dir
 
-    xvec0 = np.hstack((rgs_map.start_pt, np.zeros(2), xg0))
-else:
-    print('Create corridor map for simualtion...')
-    rgs_map = MyMap(BOUNDARY_PTS_2, OBSTACLES_2, NAV_PATH_2)
-    xvec0 = np.hstack((rgs_map.start_pt, np.zeros(
-        2), rgs_map.start_pt + np.array([1, 0])))
+
+xvec0 = np.hstack((rgs_map.start_pt, np.zeros(2), xg0))
 
 
 print('Set up intial condition robot-governor system...')
@@ -105,12 +90,10 @@ while loop_cnt <= 1000:
     xvec = rgs.xvec
     dgg = norm(xvec[4:] - rgs.goal_pt)
     print('[ITER %3d | CLOCK %3d | %.2f sec] xr = [%6.2f, %6.2f], xg = [%6.2f, %6.2f] dgg = %.2f'
-          % (loop_cnt, rgs.clock, time_now,  xvec[0], xvec[1],
-             xvec[4], xvec[5],    dgg))
+          % (loop_cnt, rgs.clock, time_now,  xvec[0], xvec[1], xvec[4], xvec[5],    dgg))
     # udpate system
     gov_status, xg_bar = rgs.update_gov()
-    rgs.xvec, rgs.PV, rgs.eta_max \
-        = rgs_solver.update(rgs.xvec, xg_bar)
+    rgs.xvec, rgs.PV, rgs.eta_max = rgs_solver.update(rgs.xvec, xg_bar)
 
     rgs.dvec_log.append(rgs.dvec)
     rgs.xvec_log.append(rgs.xvec)
@@ -130,12 +113,11 @@ while loop_cnt <= 1000:
         print('Time used: %.2f sec' % (rgs.dt * loop_cnt))
         print('Loop error cnt %d' % loop_err_cnt)
         dvec_log_array = np.array(rgs.dvec_log)
-        dgF_min, _, drF_min = np.min(dvec_log_array, axis=0)
+        dgO_min, _, drO_min = np.min(dvec_log_array, axis=0)
         drg_max = np.max(np.abs(dvec_log_array), axis=0)[1]
         deltaE_min = min(rgs.deltaE_log)
         print('deltaE_min is %.4f' % (deltaE_min))
-        print('[dgF_min, drF_min, drg_max] = [%.2f, %.2f %.2f]'
-              % (dgF_min, drF_min, drg_max))
+        print('[dgO_min, drO_min, drg_max] = [%.2f, %.2f %.2f]' % (dgO_min, drO_min, drg_max))
         break
     loop_cnt = loop_cnt + 1
 
@@ -143,11 +125,7 @@ toc(t1, "Total simulation")
 # %% saving simulation log
 folder = '../log'
 res_log = {'rgs': rgs, 'rgs_map': rgs_map, 'rgs_solver': rgs_solver}
-
-if corridor_sim is True:
-    log_filename = 'ec_' + energy_metric + Pd_str + '.pkl'
-else:
-    log_filename = 'sparse_' + energy_metric + Pd_str + '.pkl'
+log_filename = 'sparse_' + energy_metric + Pd_str + '.pkl'
 
 if not os.path.exists(folder):
         os.makedirs(folder)
@@ -159,8 +137,5 @@ with open(logname_full, 'wb') as f:  # Python 3: open(..., 'wb')
 
 # %% Show the result
 viewer = GovLogViewer(logname_full)
-# viewer.play_animation(0.01, save_fig=True, fig_sample_rate=1)
 viewer.show_trajectory()
-# viewer.show_robot_gov_stat()
-# viewer.compare_eta_max()
 pressQ_to_exist()

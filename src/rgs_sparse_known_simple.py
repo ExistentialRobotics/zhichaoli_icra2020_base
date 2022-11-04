@@ -99,10 +99,10 @@ class RbtGovSys:
         _, eig_PV, _ = LA.svd(self.PV)
         self.start_pt = xvec0[0:2]
         # initialize distance vector
-        dvec0, _, _, _ = RbtGovSys.dist_vec(self)
-        if sum(dvec0 >= 0) < 3:
-            dist_err_str = 'Init Error' + str(flist1D(dvec0))
-            raise GovError(dist_err_str)
+        # dvec0, _, _, _ = RbtGovSys.dist_vec(self)
+        # if sum(dvec0 >= 0) < 3:
+        #     dist_err_str = 'Init Error' + str(flist1D(dvec0))
+        #     raise GovError(dist_err_str)
 
 
         self.gov_status = RbtGovSys.GOV_NORMAL
@@ -153,37 +153,23 @@ class RbtGovSys:
         dist2obs_vec = []
         obs = self.map.obstacles.copy()
 
-        if len(obs) > 0:
-            if self.energy_metric == 'ball':
-                dist2obs_vec = norm(obs[:, :2] - pt, axis=1) - obs[:, -1]
-                mindist_idx = np.argmin(dist2obs_vec)
-                pstar = obs[mindist_idx, :2]
-                dist_obs = dist2obs_vec[mindist_idx]
-
-                dmsg1 = 'DEBUG dist_pt2obs %s ' % (dist2obs_vec)
-                dmsg2 = 'get pstar %s and dist_obs = %.2f from pt %s' \
-                    % (pstar, dist_obs, pt)
-                debug_print(debug_level, dmsg1)
-                debug_print(debug_level, dmsg2)
-
-            else:
-                norm_mat = self.PV  # NEL should be rotated
-                dist_obs, pstar \
-                    = opt.dist_pt2circle_arr_Pnorm(pt, obs, norm_mat)
-        else:
-            dist_obs = np.inf
-            pstar = []
+        if self.energy_metric == 'ball':
+            dist2obs_vec = norm(obs[:, :2] - pt, axis=1) - obs[:, -1]
+            mindist_idx = np.argmin(dist2obs_vec)
+            pstar = obs[mindist_idx, :2]
+            dist_obs = dist2obs_vec[mindist_idx]
 
             dmsg1 = 'DEBUG dist_pt2obs %s ' % (dist2obs_vec)
             dmsg2 = 'get pstar %s and dist_obs = %.2f from pt %s' \
                 % (pstar, dist_obs, pt)
             debug_print(debug_level, dmsg1)
             debug_print(debug_level, dmsg2)
+
         return dist_obs, pstar
 
     def dist_pt2F(self, pt, msg):
         """
-        Find distance from pt to free space
+        Find distance from pt to free space boundary
         for here we simply takv the min of the dist 2 env and obs.
         """
         debug_level = -100
@@ -217,73 +203,31 @@ class RbtGovSys:
 
     def dist_vec(self):
         """
-        Compute distances of :
+        Compute distances, dist_vec: [dgO, drg, drO]
             # dgO: governor to the cloest obstacle
             # drg: robot to governor
             # drO: robot to to the closet obstacle
         """
-        debug_level = -100
-        xr, xg = self.xvec[0:2], self.xvec[-2:]
-        msg_xg = 'wrt <xg> '
-        msg_xr = 'wrt <xr> '
-
-        dgO, pt_gstar_O = RbtGovSys.dist_pt2F(self, xg, msg_xg)
-        drO, pt_rstar_O = RbtGovSys.dist_pt2F(self, xr, msg_xr)
-
-        if self.energy_metric == 'ball':
-            drg = norm(xr - xg)
-        else:
-            drg = Pnorm_len(self.PV, xr-xg)
-        dvec = np.array([dgO, drg, drO])
+        # TODO_STEP1
+        # 1. retrieve system states and hyperparameter from class attributes
+        # 2. compute distance dgO, drg, drO (hint: dist_pt2F)
+        dvec = [dgO, drg, drO]
         self.dvec = dvec
         dmsg = 'dist_vec: [dgO, drg, drO]=[%.4f %.4f %.4f]' % (dgO, drg, drO)
         debug_print(debug_level, dmsg)
         return dvec, dgO, drg, drO
-
-    def cpt_deltaE_ellipse(self):
-        """
-        Compute energy that can be safely added to the system.
-        Energy mesured in ellipse metrics.
-        """
-        debug_level = -1
-        PV, PT, xvec = self.PV, self.P_kinematic, self.xvec
-        xr, xv, xg = xvec[0:2], xvec[2:4], xvec[4:6]
-        s1 = xr - xg
-        s2 = xv
-        dvec, dgO, drg, drO = RbtGovSys.dist_vec(self)
-        # compute energy composition
-
-        e_plus = dgO**2
-        ev = (s1.T @ PV @ s1)        # potential energy
-        et = 0.5 * (s2.T @ PT @ s2)  # kinematic energy
-        e_rgs = et + ev
-
-        deltaE = e_plus - self.eta_max
-        Evec = [deltaE, e_plus, e_rgs, et, ev]
-        self.deltaE = deltaE
-        self.Evec = Evec
-        dmsg = 'cpt_deltaE_ellipse Evec \
-                = [deltaE, e_plus, e_rgs, et, ev] is %s' % flist1D(Evec)
-        debug_print(debug_level, dmsg)
-        return Evec
 
     def cpt_deltaE_ball(self):
         """
         Compute energy that can be safely added to the system.
         Energy mesured in ball sense.
         """
-        kv = self.kv
-        xv = self.xvec[2:4]
-        _, dgO, drg, _ = RbtGovSys.dist_vec(self)
-        et = 0.5 * norm(xv)**2      # kinematic energy
-        ev = kv * drg ** 2          # potential energy
-        e_plus = kv * dgO ** 2
-        e_rgs = et + ev
-        deltaE = e_plus - e_rgs
-        Evec = [deltaE, e_plus, e_rgs, et, ev]
-        self.deltaE = deltaE
-        self.Evec = Evec
-        return Evec
+
+        # TODO_STEP2
+        # 1. retrieve system states and hyperparameter from class attributes
+        # 2. compute distance dgO and drg (Hint)
+        # 3. compute dynamic safety margin deltaE
+        return deltaE
 
 
     def find_proj_goal_ball(self, th=1):
@@ -299,74 +243,32 @@ class RbtGovSys:
             xg      : center of ball  dim: 1 * D (governor position)
             deltaE  : from self, extra energy that can be safely added to the system.
         # Output
-            STATUS  : status of this algorithm (GOAL_REACHED, NORMAL, FAIL...)
-            xg_bar  : local projected goal LPG
+            STATUS  : status of this algorithm (GOAL_REACHED, NORMAL, HALT...)
+            lpg  : local projected goal 
             nav_adv_idx : index of navagation path the system is heading to
         """
-        xg = self.xvec[-2:]
-        path = self.map.nav_path        # reference path
-        goal_pt = self.goal_pt
-        r = np.sqrt(self.deltaE/self.kv)
-        xg_bar = np.zeros(2)            # initialize goal pt
-        path_len = len(path)            # check remained path length
-        nav_adv_idx = -1
 
-        # governor reached the goal
-        if norm(xg - goal_pt) < th:
-            return RbtGovSys.GOV_GOAL_REACHED, goal_pt, nav_adv_idx
+        # return governor_status, lpg, nav_adv_idx
 
-        # PREVENT BUG WHEN gg.OBS DEGENERATE always turn it to 2D
-        path = np.reshape(path, (-1, path.shape[-1]))
+        # TODO_STEP3
+        # 1. write a function "FuncA" which can find intersections between a line segment (not unbounded line) and ball
+        # 2. write a function "FuncB" to use FuncA to find furthest intersection between a ball and a path (a few waypoints in 2d array, each row is a waypoint)
+        # 3. call FuncB with correct input to compute local projected goal  (hint: look at definition of local projected goal on paper )
 
-        # Alg. Navigation path with at least two vertices
-        # ----------------------------------------------
+        # nav_adv_idx: the furthest index of path lpg lies in
+        # Example: nav_adv_idx = 6
+        #  (0)               (5)             (6)
+        #  START---->....---> A-----lpg-----> B----> .... ---> END
 
-        # iterative from path backward, extract two points iteratively
-        # get segment AB
+        # 4. determine governor_status according result step 3
+        # governor_status can be {RbtGovSys.GOV_GOAL_REACHED, RbtGovSys.GOV_HALT, RbtGovSys.GOV_NORMAL}
+        # GOV_GOAL_REACHED: lpg very close to final goal in reference path
+        # GOV_HALT: cannot find a intersection due to numerical problem use last successful result
+        # GOV_NORMAL: other cases
+    
+        # 5. figure out for each governor status, what other return arguments should be 
+        # there are two outputs left, lpg, and nav_adv_idx
 
-        # assume no repeat pts now
-        # Compute the closest point on (A,B) segment that is in safe zone
-
-        # u = X - A = AX
-        # v = B - A = AB
-        # up = u projection on v
-        # up_perb = u - up
-        # up = u'v / |v|^2 * v
-        # w1  =  u'v / |v|^2
-        # w1_hat = normalize(w1) to [0,1]
-        # w2 = sqrt(r^2 - d^2) / |v|
-        # ----------------------------------------------
-        for path_idx in range(path_len):
-            if path_idx == (path_len-1):
-                # raise GovError('CANNOT FIND LOCAL GOAL ALL SEGS ARE TOO FAR AWAY')
-                print('Warning CANNOT FIND LOCAL GOAL, ALL SEGS ARE TOO FAR AWAY')
-                return RbtGovSys.GOV_HALT, xg, self.nav_adv_idx_log[-1]
-
-            B = path[-path_idx-1]
-            A = path[-path_idx-2]
-
-            nav_adv_idx = -path_idx-1
-
-            dAB = norm(A-B)  # segment length ptA from ptB
-            u = xg - A
-            v = B - A
-
-            w1 = np.inner(u, v) / dAB**2
-            w1hat = max(min(w1, 1), 0)  # normalized to [0,1]
-            dist2segAB = norm(u - w1hat*v)
-
-            if dist2segAB > r:
-                continue
-            else:
-                # distance from x to line AB
-                dist2lineAB = norm(u - w1 * v)
-                # print('DEBUG dist to line AB is %.2f' %(dist2lineAB))
-                w2 = np.sqrt(r**2 - dist2lineAB**2)/dAB  # ratio of |v|
-                w = w1 + w2
-                w = max(min(w, 1), 0)
-                xg_bar = (1 - w) * A + w * B
-
-                return RbtGovSys.GOV_NORMAL, xg_bar, nav_adv_idx
 
     def update_gov(self):
         """
@@ -410,20 +312,16 @@ class RbtGovSys:
         energy_metric = self.energy_metric
 
         if energy_metric == 'ball':
-            Evec = RbtGovSys.cpt_deltaE_ball(self)
+            # Evec = RbtGovSys.cpt_deltaE_ball(self)
+            deltaE = RbtGovSys.cpt_deltaE_ball(self)
         
-        deltaE, e_plus, e_rgs, et, ev = Evec
+        # deltaE, e_plus, e_rgs, et, ev = Evec
         self.deltaE = deltaE
         
         # halt case due to simulation discretization and numerical issue
         if deltaE <= 0:
             xvec = self.xvec
             xg = xvec[-2:]
-            print('\nWARNING deltaE < 0: deltaE = %.4f' % (deltaE))
-            print('[e_plus = %.4f e_rgs = %.4f, et = %.4f ev = %.4f]'
-                  % (e_plus, e_rgs, et, ev))
-            print('Current states xvec')
-            print(xvec)
             gov_status = RbtGovSys.GOV_HALT
             xg_bar = xg
 
@@ -431,8 +329,7 @@ class RbtGovSys:
             if energy_metric == 'ball':
                 rB = np.sqrt(deltaE/self.kv)
                 # find new xg_bar given current configuation and nav path
-                gov_status, xg_bar, nav_adv_idx \
-                    = RbtGovSys.find_proj_goal_ball(self)
+                gov_status, xg_bar, nav_adv_idx = RbtGovSys.find_proj_goal_ball(self)
                 rho = rB
 
         # for all error free cases update relevant log and gov_status
@@ -441,8 +338,7 @@ class RbtGovSys:
         self.le_rho_log.append(rho)
         self.lpg_log.append(xg_bar)
         self.nav_adv_idx_log.append(nav_adv_idx)
-        self.Evec_log.append(Evec)
-        """ UPDATE CLOCK
-        """
+        # self.Evec_log.append(Evec)
+        """ UPDATE CLOCK """
         self.clock = self.clock + 1
         return gov_status, xg_bar
