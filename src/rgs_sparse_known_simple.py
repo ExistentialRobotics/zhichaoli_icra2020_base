@@ -9,12 +9,14 @@ https://github.com/zhl355/ICRA2020_RG_SDDM
 """
 # python built in package
 import numpy as np
-from numpy.linalg import norm
 from numpy import linalg as LA
+from numpy.linalg import norm
+
+import opt_solver as opt
 # personal
 # from gov_ellipse import MyEllipse
-from my_utils import debug_print, Pnorm_len, flist1D
-import opt_solver as opt
+from my_utils import Pnorm_len, debug_print, flist1D
+
 # float precision
 np.set_printoptions(precision=4)
 
@@ -56,7 +58,7 @@ class RbtGovSys:
                 - dt : discretization time interval
 
             # dvec = [dgO, drg, drO]
-                - dgO/dgF: governor to the cloest obstacle
+                - dgO/dgF: governor to the closest obstacle
                 - drg: robot to governor
                 - drO/drF: robot to to the closet obstacle
 
@@ -191,12 +193,12 @@ class RbtGovSys:
             if d2obs <= d2wall:
                 dist_F = d2obs
                 pstar_F = pstar_obs
-                msg = '!!! cloest pt at Xobs dist_F %.2f' % dist_F
+                msg = '!!! closest pt at Xobs dist_F %.2f' % dist_F
                 debug_print(debug_level, msg)
             else:
                 dist_F = d2wall
                 pstar_F = pstar_wall
-                msg = '!!! cloest pt at wall dist_F %.2f' % dist_F
+                msg = '!!! closest pt at wall dist_F %.2f' % dist_F
                 debug_print(debug_level, msg)
 
         return dist_F, pstar_F
@@ -204,7 +206,7 @@ class RbtGovSys:
     def dist_vec(self):
         """
         Compute distances, dist_vec: [dgO, drg, drO]
-            # dgO: governor to the cloest obstacle
+            # dgO: governor to the closest obstacle
             # drg: robot to governor
             # drO: robot to to the closet obstacle
         """
