@@ -9,6 +9,7 @@ https://github.com/zhl355/ICRA2020_RG_SDDM
 """
 # python built in package
 import numpy as np
+import numpy.linalg as npla
 from numpy import linalg as LA
 from numpy.linalg import norm
 
@@ -20,6 +21,30 @@ from my_utils import Pnorm_len, debug_print, flist1D
 # float precision
 np.set_printoptions(precision=4)
 
+
+def ball_and_path(x, r, path):
+    """
+    Find furthest intersection between a ball and a path in 2D/3D. (d=2/3)
+    Inputs:
+        x: coordinates of the ball center (d, )
+        r: radius of the ball
+        path: a series of waypoints (num_pts, d)
+    Output
+        status: running of this algorithm
+                -1: failed
+                0: succeeded
+
+        x_star  : furthest intersection (d, )
+        B_idx: the furthest index of path xg lies in
+                Example: B_idx = 6
+                 (0)               (5)                (6)
+                 START---->....---> A-----x_star-----> B----> .... ---> END
+
+    """
+    # default return
+    status, x_star, B_idx = -1, [], []
+    # TODO_STEP3 
+    return status, x_star, B_idx
 
 class GovError(Exception):
     """ User Defined Exceptions for RG.
@@ -108,6 +133,7 @@ class RbtGovSys:
 
 
         self.gov_status = RbtGovSys.GOV_NORMAL
+        self.deltaE = 0 # hack for practice
         # history log container
         self.xvec_log = [xvec0]
         self.dvec_log = []
@@ -213,6 +239,14 @@ class RbtGovSys:
         # TODO_STEP1
         # 1. retrieve system states and hyperparameter from class attributes
         # 2. compute distance dgO, drg, drO (hint: dist_pt2F)
+        debug_level = -100
+        rbt_loc, gvn_loc = self.xvec[0:2], self.xvec[-2:]
+
+        dgO, _ = RbtGovSys.dist_pt2F(self, gvn_loc, 'wrt <governor> ')
+        drO, _ = RbtGovSys.dist_pt2F(self, rbt_loc, 'wrt <robot> ')
+
+        drg = np.linalg.norm(gvn_loc - rbt_loc)
+
         dvec = [dgO, drg, drO]
         self.dvec = dvec
         dmsg = 'dist_vec: [dgO, drg, drO]=[%.4f %.4f %.4f]' % (dgO, drg, drO)
@@ -227,10 +261,54 @@ class RbtGovSys:
 
         # TODO_STEP2
         # 1. retrieve system states and hyperparameter from class attributes
-        # 2. compute distance dgO and drg (Hint)
+        # 2. compute distance dgO and drg 
         # 3. compute dynamic safety margin deltaE
+
+        kv = self.kv # coefficient of potential energy
+        xv = self.xvec[2:4]
+
+        _, dgO, drg, _ = RbtGovSys.dist_vec(self)
+
+        e_plus = kv * dgO ** 2
+        et = 0.5 * norm(xv)**2      # kinematic energy
+        ev = kv * drg ** 2          # potential energy
+        e_rgs = et + ev
+        deltaE = e_plus - e_rgs
+
+        self.Evec = [deltaE, e_plus, e_rgs, et, ev]
+
         return deltaE
 
+    @staticmethod
+    def find_intersection_ball_path(ball, path):
+        """ Find intersection between a ball and a path 
+        Input
+            ball: 1d numpy array (2/3, )
+            path: 2d numpy array dimension (num_pts, 2/3)
+        Return 
+            intr_found: (boolean) True if intersection is found, otherwise false
+            intr_pt: intersection points 1d numpy array
+            intr_seg_RHS_idx: 
+                if intersection is found, return second index of intersecting segment 
+                otherwise return None
+
+                # Example: intr_seg_RHS_idx = 6
+                #  (0)               (5)                   (6)
+                #  START---->....---> A-----(intr_pt)-----> B----> .... ---> END
+        """
+
+
+        status, x_star, B_idx = ball_and_path(ball[0:2], ball[2], path=path)
+        
+        if status >= 0:
+            intr_found = True
+            intr_pt = x_star
+            intr_seg_RHS_idx = B_idx
+        else:
+            intr_found, intr_pt, intr_seg_RHS_idx = False, None, None
+
+
+        return intr_found, intr_pt, intr_seg_RHS_idx
 
     def find_proj_goal_ball(self, th=1):
         """
@@ -262,15 +340,42 @@ class RbtGovSys:
         #  (0)               (5)             (6)
         #  START---->....---> A-----lpg-----> B----> .... ---> END
 
-        # 4. determine governor_status according result step 3
+
+        # TODO_STEP4
+
+        # 1. determine governor_status according result step 3
         # governor_status can be {RbtGovSys.GOV_GOAL_REACHED, RbtGovSys.GOV_HALT, RbtGovSys.GOV_NORMAL}
         # GOV_GOAL_REACHED: lpg very close to final goal in reference path
         # GOV_HALT: cannot find a intersection due to numerical problem use last successful result
         # GOV_NORMAL: other cases
     
-        # 5. figure out for each governor status, what other return arguments should be 
-        # there are two outputs left, lpg, and nav_adv_idx
+        # 2. figure out for each governor status, what {lpg, nav_adv_idx} need to be return
+        
 
+        # retrieve states
+        gvn = self.xvec[-2:]
+        path = self.map.nav_path
+
+        # governor reached the goal
+        if norm(gvn - self.goal_pt) < th:
+            gvn_status = RbtGovSys.GOV_GOAL_REACHED
+            lpg = self.goal_pt
+            nav_adv_idx = -1
+        else:
+            # Hint, ball is local safe zone, path is nav_path
+            ls_radius = np.sqrt(self.deltaE/self.kv)
+            ls_circle = np.array([gvn[0], gvn[1], ls_radius])
+            intr_found, intr_pt, intr_seg_RHS_idx  = RbtGovSys.find_intersection_ball_path(ls_circle, path) 
+            if not intr_found:
+                gvn_status = RbtGovSys.GOV_HALT
+                lpg = gvn
+                nav_adv_idx = None
+            else:
+                gvn_status = RbtGovSys.GOV_NORMAL
+                lpg = intr_pt 
+                nav_adv_idx = intr_seg_RHS_idx
+
+        return gvn_status, lpg, nav_adv_idx
 
     def update_gov(self):
         """
@@ -324,6 +429,14 @@ class RbtGovSys:
         if deltaE <= 0:
             xvec = self.xvec
             xg = xvec[-2:]
+            deltaE, e_plus, e_rgs, et, ev = self.Evec
+            print('\nWARNING deltaE < 0: deltaE = %.4f' % (deltaE))
+            print('[e_plus = %.4f e_rgs = %.4f, et = %.4f ev = %.4f]'
+                  % (e_plus, e_rgs, et, ev))
+            print('Current states xvec')
+            print(xvec)
+
+
             gov_status = RbtGovSys.GOV_HALT
             xg_bar = xg
 

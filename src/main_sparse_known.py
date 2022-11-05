@@ -14,18 +14,19 @@ BSD 3-Clause License
 # python built in package
 import os
 import pickle
-import numpy as np
+
 import matplotlib as mpl
+import numpy as np
 from numpy.linalg import norm
-# personal libraries
-from gov_map import MyMap
-from gov_map import NAV_PATH_14, OBSTACLES_1, BOUNDARY_PTS_1  # circular env
-from rgs_sparse_known_simple import RbtGovSys
+
 from gov_log_viewer import GovLogViewer
+# personal libraries
+from gov_map import (BOUNDARY_PTS_1, NAV_PATH_14, OBSTACLES_1,  # circular env
+                     MyMap)
 from lti_solver import RGS_LTISolver
+from my_utils import getRotpsd_theta, pressQ_to_exist, tic, toc
+from rgs_sparse_known_simple import RbtGovSys
 from traj_est import find_eta_max_analytic
-from my_utils import tic, toc, pressQ_to_exist
-from my_utils import getRotpsd_theta
 
 # remove type3 fonts in figure
 mpl.rcParams['pdf.fonttype'] = 42
@@ -64,7 +65,7 @@ print(Pd_str)
 ev0 = (xg0 - xr0).T @ Pd @ (xg0 - xr0)
 
 # controller desgin paras
-kv, kg, zeta = c1, 1, 2 * np.sqrt(2)
+kappa, kv, kg, zeta = c1, c1, 1, 2 * np.sqrt(2)
 design_parameter = [kv, kg, zeta]  # kv, kg, zeta
 eta_max0,_ = find_eta_max_analytic(xvec0, PV0, 2*kv, zeta)
 
@@ -89,8 +90,9 @@ while loop_cnt <= 1000:
     time_now = rgs.dt * loop_cnt
     xvec = rgs.xvec
     dgg = norm(xvec[4:] - rgs.goal_pt)
-    print('[ITER %3d | CLOCK %3d | %.2f sec] xr = [%6.2f, %6.2f], xg = [%6.2f, %6.2f] dgg = %.2f'
-          % (loop_cnt, rgs.clock, time_now,  xvec[0], xvec[1], xvec[4], xvec[5],    dgg))
+    deltaE = rgs.deltaE
+    print('[ITER %3d | CLOCK %3d | %.2f sec] xr = [%6.2f, %6.2f], xg = [%6.2f, %6.2f] dgg = %.2f, deltaE = %.2f'
+          % (loop_cnt, rgs.clock, time_now,  xvec[0], xvec[1], xvec[4], xvec[5],    dgg, deltaE))
     # udpate system
     gov_status, xg_bar = rgs.update_gov()
     rgs.xvec, rgs.PV, rgs.eta_max = rgs_solver.update(rgs.xvec, xg_bar)

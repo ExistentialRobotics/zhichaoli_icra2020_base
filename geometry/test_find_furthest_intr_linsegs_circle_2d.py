@@ -24,6 +24,31 @@ def pressQ_to_exist():
             break
     return 0
 
+def ball_and_path(x, r, path):
+    """
+    Find furthest intersection between a ball and a path in 2D/3D. (d=2/3)
+    Inputs:
+        x: coordinates of the ball center (d, )
+        r: radius of the ball
+        path: a series of waypoints (num_pts, d)
+    Output
+        status: running of this algorithm
+                -1: failed
+                0: succeeded
+
+        x_star  : furthest intersection (d, )
+        B_idx: the furthest index of path xg lies in
+                Example: B_idx = 6
+                 (0)               (5)                (6)
+                 START---->....---> A-----x_star-----> B----> .... ---> END
+
+    """
+    # default return
+    status, x_star, B_idx = -1, [], []
+    # TODO_STEP3 
+    return status, x_star, B_idx
+
+
 # Test examples
 if __name__ == "__main__":
 
